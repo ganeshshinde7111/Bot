@@ -8,8 +8,13 @@ services:
     env_file: ../.env
     volumes:
       - ../data:/app/data
+    # Loopback-only by default -- this box has no OS-level firewall
+    # configured, so an 0.0.0.0 bind here would be internet-reachable
+    # unless the cloud security list blocks it. Only widen this (or rely
+    # on the caddy service below) once you're intentionally exposing the
+    # webhook publicly for TradingView/MT5 with a real domain + TLS.
     ports:
-      - "8080:8080" # remove this once Caddy is fronting it publicly
+      - "127.0.0.1:8080:8080"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8080/health')"]
       interval: 30s
