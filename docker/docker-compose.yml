@@ -6,6 +6,8 @@ services:
     container_name: algo-webhook
     restart: unless-stopped
     env_file: ../.env
+    environment:
+      - SIGNALS_DB_PATH=/app/data/signals.db
     volumes:
       - ../data:/app/data
     # Loopback-only by default -- this box has no OS-level firewall

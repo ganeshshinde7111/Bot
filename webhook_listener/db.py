@@ -6,12 +6,19 @@ in-process state, which is what lets them run as separate containers.
 """
 
 import json
+import os
 import sqlite3
 import time
 from contextlib import contextmanager
 from pathlib import Path
 
-DB_PATH = Path(__file__).resolve().parent.parent / "data" / "signals.db"
+# Must be an absolute, env-driven path -- inside the Docker image this
+# module is flattened into /app (see docker/Dockerfile.webhook), so
+# deriving it from __file__'s parents would point outside the /app/data
+# bind mount and silently write to the container's ephemeral filesystem.
+# Same default as mcp_server/config.py's SIGNALS_DB_PATH so both services
+# agree on the shared file without extra config.
+DB_PATH = Path(os.environ.get("SIGNALS_DB_PATH", "/app/data/signals.db"))
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS signals (

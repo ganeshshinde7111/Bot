@@ -23,7 +23,7 @@ TradingView / MT5  --alert-->  webhook_listener (FastAPI + SQLite)
 Claude  <--MCP tools-->  mcp_server (broker + risk + sentiment + signals)
   |
   v
-Zerodha Kite Connect (orders, positions, margins)
+DhanHQ (default, free API+data) -- or Zerodha Kite Connect (fallback)
 ```
 
 Full diagram and rationale: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
@@ -33,14 +33,14 @@ Full diagram and rationale: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 | Path | Purpose |
 |---|---|
 | `webhook_listener/` | Public FastAPI service that receives TradingView/MT5 alerts and stores them in SQLite. |
-| `mcp_server/` | The MCP server Claude connects to: broker (Kite), risk math, signal reads, news sentiment tools. |
+| `mcp_server/` | The MCP server Claude connects to: broker (Dhan by default, Kite as fallback -- `ACTIVE_BROKER` env var), risk math, signal reads, news sentiment tools. |
 | `pine_scripts/ai_signal_bridge.pine` | Foundational TradingView Pine Script v5 strategy that emits JSON alerts. |
 | `mql5/AI_Signal_EA.mq5` | Equivalent MT5 Expert Advisor using `WebRequest()`. |
 | `docs/MASTER_SYSTEM_PROMPT.md` | Production system prompt for the Claude decision engine, with risk rules and output schema. |
 | `docs/ARCHITECTURE.md` | Data-flow diagram and design rationale. |
 | `docs/DEPLOYMENT.md` | Docker / docker-compose deployment guide for a Linux ARM VPS. |
 | `claude_config/mcp_config.json` | Sample MCP config for Claude Desktop (local stdio) and a remote/tunneled setup. |
-| `scripts/kite_login_helper.py` | Interactive helper for Kite's daily access-token refresh. |
+| `scripts/kite_login_helper.py` | Interactive helper for Kite's daily access-token refresh (only needed if `ACTIVE_BROKER=kite`). |
 | `docker/` | Dockerfiles, `docker-compose.yml`, Caddy reverse-proxy config. |
 
 ## Quickstart (local, paper mode)
@@ -53,7 +53,7 @@ pip install -r webhook_listener/requirements.txt
 pip install -r mcp_server/requirements.txt
 
 # terminal 1
-cd webhook_listener && uvicorn app:app --reload --port 8080
+cd webhook_listener && export SIGNALS_DB_PATH=$(pwd)/../data/signals.db && uvicorn app:app --reload --port 8080
 
 # terminal 2
 export MCP_TRANSPORT=stdio SIGNALS_DB_PATH=$(pwd)/data/signals.db
@@ -89,7 +89,7 @@ Agent SDK / Claude Code job.
 - **Hard numeric ceilings**, not just prompt language:
   `MAX_ORDER_VALUE_INR`, `MAX_DAILY_LOSS_PCT`, `MAX_POSITION_RISK_PCT`,
   `MAX_OPEN_POSITIONS` (`mcp_server/config.py`, enforced in
-  `mcp_server/tools/risk.py` and `broker_kite.py`).
+  `mcp_server/tools/risk.py`, `broker_dhan.py` and `broker_kite.py`).
 - **No public exposure of the broker-connected process.** Only the signal
   webhook is public; the MCP server binds to loopback and is reached via
   SSH tunnel / private network.
@@ -98,9 +98,16 @@ Agent SDK / Claude Code job.
 
 ## Extending
 
+- **Broker choice**: `ACTIVE_BROKER=dhan` (default -- free API and data,
+  no monthly subscription) or `ACTIVE_BROKER=kite` (Zerodha, kept as a
+  fully-implemented fallback). This is a restart-time switch, not an
+  automatic runtime fallback -- an order should never silently jump
+  brokers mid-trade. Only the active broker's tools are registered under
+  the canonical names (`get_positions`, `place_order`, etc.), so the
+  system prompt needs no changes either way.
 - **Another broker** (Groww, Hyperliquid, generic REST): add a sibling
-  module to `mcp_server/tools/broker_kite.py` implementing the same tool
-  names; the system prompt needs no changes.
+  module to `mcp_server/tools/broker_dhan.py` implementing the same tool
+  names, register it in `server.py`; the system prompt needs no changes.
 - **More indicators / a different strategy**: edit
   `pine_scripts/ai_signal_bridge.pine` and `mql5/AI_Signal_EA.mq5`, or ask
   Claude to do it using the `get_pine_script_template` tool as a base.

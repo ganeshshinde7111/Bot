@@ -10,7 +10,21 @@ def _bool(name: str, default: bool = False) -> bool:
 
 
 class Settings:
-    # --- Broker (Zerodha Kite Connect) ---
+    # --- Active broker selection ---
+    # "dhan" (default: free API, free data, no monthly subscription) or
+    # "kite" (kept as a fully-implemented fallback -- flip this env var
+    # and restart if Dhan has an outage or you prefer Zerodha). Only the
+    # active broker's tools are registered under the canonical tool names
+    # (get_positions, place_order, etc.) so there's never ambiguity about
+    # which broker an order actually goes to -- switching brokers is a
+    # deliberate restart, never a silent runtime fallback mid-trade.
+    ACTIVE_BROKER = os.environ.get("ACTIVE_BROKER", "dhan").strip().lower()
+
+    # --- Broker: DhanHQ ---
+    DHAN_CLIENT_ID = os.environ.get("DHAN_CLIENT_ID", "")
+    DHAN_ACCESS_TOKEN = os.environ.get("DHAN_ACCESS_TOKEN", "")
+
+    # --- Broker: Zerodha Kite Connect ---
     KITE_API_KEY = os.environ.get("KITE_API_KEY", "")
     KITE_API_SECRET = os.environ.get("KITE_API_SECRET", "")
     # Kite access tokens expire daily; regenerate via your login flow and
