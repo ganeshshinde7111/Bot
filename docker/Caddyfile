@@ -1,0 +1,13 @@
+# Reverse proxy for the webhook listener -- gives TradingView/MT5 a real
+# HTTPS endpoint with an auto-renewed Let's Encrypt cert. Replace the
+# placeholder domain, point its DNS A/AAAA record at the VPS, then run
+# `docker compose --profile proxy up -d caddy`.
+#
+# The MCP server itself (port 8000) is intentionally NOT exposed here --
+# it should stay on the docker-internal network / a VPN / SSH tunnel,
+# since it holds broker credentials and order-placement tools. Only the
+# webhook listener needs to be public.
+
+your-vps-domain.example {
+    reverse_proxy webhook:8080
+}

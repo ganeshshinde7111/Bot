@@ -1,0 +1,52 @@
+//@version=5
+// ============================================================================
+// AI Signal Bridge -- EMA crossover + RSI filter strategy that emits
+// JSON-formatted alerts consumable by webhook_listener/app.py.
+//
+// This is a FOUNDATION template, not a proven edge -- backtest and
+// forward-test on paper before wiring it to money. It exists to prove the
+// TradingView -> webhook -> MCP -> Claude -> broker pipeline end-to-end.
+//
+// Setup:
+//   1. Add this to a chart, tune inputs.
+//   2. Create an Alert on this script's alertcondition, "Once Per Bar Close".
+//   3. Webhook URL: https://<your-vps-domain>/webhook/tradingview
+//   4. Alert "Message" field: paste EXACTLY the JSON below (TradingView
+//      substitutes the {{ }} placeholders at fire time). The "secret"
+//      field must match WEBHOOK_SHARED_SECRET on the server.
+// ============================================================================
+strategy("AI Signal Bridge - EMA/RSI", overlay=true, initial_capital=100000)
+
+fastLen  = input.int(9,  "Fast EMA length")
+slowLen  = input.int(21, "Slow EMA length")
+rsiLen   = input.int(14, "RSI length")
+rsiLong  = input.int(55, "RSI must be above this to allow BUY")
+rsiShort = input.int(45, "RSI must be below this to allow SELL")
+
+fastEMA = ta.ema(close, fastLen)
+slowEMA = ta.ema(close, slowLen)
+rsiVal  = ta.rsi(close, rsiLen)
+
+longCond  = ta.crossover(fastEMA, slowEMA) and rsiVal > rsiLong
+shortCond = ta.crossunder(fastEMA, slowEMA) and rsiVal < rsiShort
+
+plot(fastEMA, "Fast EMA", color=color.blue)
+plot(slowEMA, "Slow EMA", color=color.orange)
+
+if longCond
+    strategy.entry("Long", strategy.long)
+if shortCond
+    strategy.entry("Short", strategy.short)
+
+// Fires on every bar close; the actual BUY/SELL vs HOLD decision is encoded
+// in the alert message text below via TradingView placeholders, so a single
+// alert covers all three states without three separate alertcondition calls.
+alertcondition(longCond or shortCond, title="AI Signal", message=
+     '{"secret":"{{secret}}","symbol":"{{ticker}}","action":"' +
+     '{{strategy.order.action}}","price":{{close}},"timeframe":"{{interval}}",' +
+     '"strategy":"ema_rsi_v1","indicators":{"rsi":{{plot("RSI")}},"fast_ema":{{plot("Fast EMA")}},"slow_ema":{{plot("Slow EMA")}}}}')
+
+// Paste this in the alert Message box instead if your TradingView plan
+// doesn't support the {{plot(...)}} placeholder syntax:
+//   {"secret":"YOUR_SECRET","symbol":"{{ticker}}","action":"{{strategy.order.action}}",
+//    "price":{{close}},"timeframe":"{{interval}}","strategy":"ema_rsi_v1"}

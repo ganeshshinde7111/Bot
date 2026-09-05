@@ -1,0 +1,56 @@
+services:
+  webhook:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.webhook
+    container_name: algo-webhook
+    restart: unless-stopped
+    env_file: ../.env
+    volumes:
+      - ../data:/app/data
+    ports:
+      - "8080:8080" # remove this once Caddy is fronting it publicly
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  mcp-server:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.mcp
+    container_name: algo-mcp-server
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      - SIGNALS_DB_PATH=/app/data/signals.db
+    volumes:
+      - ../data:/app/data
+    # Intentionally bound to loopback only -- this service can place real
+    # orders. Reach it via SSH tunnel (ssh -L 8000:localhost:8000 user@vps)
+    # or a private VPN, never expose it directly to the internet.
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      webhook:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2.8-alpine
+    container_name: algo-caddy
+    restart: unless-stopped
+    profiles: ["proxy"] # only starts with --profile proxy, once DNS is ready
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - webhook
+
+volumes:
+  caddy_data:
+  caddy_config:

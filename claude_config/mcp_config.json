@@ -1,0 +1,31 @@
+{
+  "_comment_local": "Claude Desktop config (claude_desktop_config.json) for running the MCP server locally over stdio -- point 'cwd' at your clone of this repo.",
+  "mcpServers": {
+    "algo-trading-bot-local": {
+      "command": "python",
+      "args": ["-m", "mcp_server.server"],
+      "cwd": "/absolute/path/to/Bot",
+      "env": {
+        "MCP_TRANSPORT": "stdio",
+        "KITE_API_KEY": "",
+        "KITE_API_SECRET": "",
+        "KITE_ACCESS_TOKEN": "",
+        "NEWS_API_KEY": "",
+        "SIGNALS_DB_PATH": "/absolute/path/to/Bot/data/signals.db",
+        "LIVE_TRADING_ENABLED": "false",
+        "MAX_ORDER_VALUE_INR": "25000",
+        "MAX_DAILY_LOSS_PCT": "2.0",
+        "MAX_POSITION_RISK_PCT": "1.0",
+        "MAX_OPEN_POSITIONS": "5"
+      }
+    }
+  },
+  "_comment_remote": "For the headless VPS deployment (docker-compose, MCP_TRANSPORT=streamable-http), connect a client (Claude Agent SDK, or Claude Desktop's remote MCP support) to the tunneled/VPN address instead, e.g.:",
+  "mcpServersRemoteExample": {
+    "algo-trading-bot-vps": {
+      "url": "http://127.0.0.1:8000/mcp",
+      "transport": "streamable-http",
+      "_note": "Reach this via `ssh -L 8000:localhost:8000 user@your-vps` since the MCP server is bound to loopback on the VPS -- see docker/docker-compose.yml."
+    }
+  }
+}
