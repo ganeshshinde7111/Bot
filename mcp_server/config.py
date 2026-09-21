@@ -11,7 +11,8 @@ def _bool(name: str, default: bool = False) -> bool:
 
 class Settings:
     # --- Active broker selection ---
-    # "dhan" (default: free API, free data, no monthly subscription) or
+    # "dhan" (default: free trading API; market-data APIs need a separate Dhan
+    # Data API subscription) or
     # "kite" (kept as a fully-implemented fallback -- flip this env var
     # and restart if Dhan has an outage or you prefer Zerodha). Only the
     # active broker's tools are registered under the canonical tool names

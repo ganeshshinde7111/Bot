@@ -56,6 +56,10 @@ def init_db() -> None:
 
 
 def insert_signal(source: str, payload: dict) -> int:
+    # The shared secret authenticates the request; it must never be stored,
+    # because stored rows are later read back by the MCP tools (and so by
+    # the LLM and its transcripts).
+    payload = {k: v for k, v in payload.items() if k != "secret"}
     with get_conn() as conn:
         cur = conn.execute(
             """

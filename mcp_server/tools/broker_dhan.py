@@ -1,8 +1,10 @@
-"""DhanHQ v2 REST API broker tools -- the default active broker (free API,
-free real-time/historical data, no monthly subscription, unlike Kite
-Connect). Endpoint paths, request schemas and enum values below were
-verified directly against https://dhanhq.co/docs/v2/ and a live pull of
-Dhan's published instrument master, not guessed.
+"""DhanHQ v2 REST API broker tools -- the default active broker (free trading
+API, no monthly fee, unlike Kite Connect). NOTE: LTP / quote / historical
+candle endpoints require a separate Dhan Data API subscription; without it
+they return 401 "Data APIs not Subscribed". Endpoint paths, request schemas
+and enum values below were verified directly against
+https://dhanhq.co/docs/v2/ and a live pull of Dhan's published instrument
+master, not guessed.
 
 Credentials come only from environment variables (see config.py).
 
@@ -60,28 +62,46 @@ def _headers() -> dict:
     }
 
 
+def _parse(resp: requests.Response):
+    """Return the JSON body, or raise with Dhan's own error text. A bare
+    `401 Unauthorized` is ambiguous: Dhan uses 401 both for an expired token
+    (DH-901) and for an unsubscribed Data API (DH-902 / "Data APIs not
+    Subscribed"), and the agent must be able to tell them apart. Only the
+    response body is included -- never the request headers (token)."""
+    if resp.ok:
+        return resp.json()
+    try:
+        detail = resp.json()
+    except ValueError:
+        detail = resp.text[:300]
+    raise RuntimeError(f"Dhan API HTTP {resp.status_code} on {resp.request.method} {resp.request.path_url}: {detail}")
+
+
+def _items(data) -> dict:
+    """Wrap list responses so an empty list is an explicit, confirmed
+    `count: 0` rather than a tool result with no content."""
+    items = data if isinstance(data, list) else []
+    return {"count": len(items), "items": items}
+
+
 def _get(path: str, params: dict | None = None) -> dict | list:
     resp = requests.get(f"{BASE_URL}{path}", headers=_headers(), params=params, timeout=15)
-    resp.raise_for_status()
-    return resp.json()
+    return _parse(resp)
 
 
 def _post(path: str, body: dict) -> dict | list:
     resp = requests.post(f"{BASE_URL}{path}", headers=_headers(), json=body, timeout=15)
-    resp.raise_for_status()
-    return resp.json()
+    return _parse(resp)
 
 
 def _put(path: str, body: dict) -> dict | list:
     resp = requests.put(f"{BASE_URL}{path}", headers=_headers(), json=body, timeout=15)
-    resp.raise_for_status()
-    return resp.json()
+    return _parse(resp)
 
 
 def _delete(path: str) -> dict | list:
     resp = requests.delete(f"{BASE_URL}{path}", headers=_headers(), timeout=15)
-    resp.raise_for_status()
-    return resp.json()
+    return _parse(resp)
 
 
 def _ensure_scrip_master() -> Path:
@@ -141,19 +161,19 @@ def register(mcp: FastMCP) -> None:
         return _get("/fundlimit")
 
     @mcp.tool()
-    def get_positions() -> list:
+    def get_positions() -> dict:
         """Fetch current open positions (day & net)."""
-        return _get("/positions")
+        return _items(_get("/positions"))
 
     @mcp.tool()
-    def get_holdings() -> list:
+    def get_holdings() -> dict:
         """Fetch long-term equity holdings (portfolio)."""
-        return _get("/holdings")
+        return _items(_get("/holdings"))
 
     @mcp.tool()
-    def get_orders() -> list:
+    def get_orders() -> dict:
         """Fetch today's order book (all states: pending/traded/rejected)."""
-        return _get("/orders")
+        return _items(_get("/orders"))
 
     @mcp.tool()
     def get_ltp(security_ids_by_segment: dict[str, list[int]]) -> dict:

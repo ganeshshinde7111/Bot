@@ -77,8 +77,16 @@ def register(mcp: FastMCP) -> None:
         max open-position count is reached, or the new position's risk
         would push total open risk past policy.
         """
-        daily_loss_pct = (todays_realized_pnl / account_equity) * 100.0 if account_equity else 0.0
+        daily_loss_pct = (todays_realized_pnl / account_equity) * 100.0 if account_equity > 0 else 0.0
         reasons = []
+
+        # Fail closed: with no (or negative) equity there is nothing to size a
+        # position against, and the percentage checks below are meaningless.
+        if account_equity <= 0:
+            reasons.append(
+                f"Account equity is {account_equity}; cannot size or approve any "
+                "new position. Verify get_margins / fund the account."
+            )
 
         if daily_loss_pct <= -settings.MAX_DAILY_LOSS_PCT:
             reasons.append(

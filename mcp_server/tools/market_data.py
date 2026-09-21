@@ -14,6 +14,14 @@ from ..config import settings
 PINE_TEMPLATE_PATH = Path(__file__).resolve().parent.parent.parent / "pine_scripts" / "ai_signal_bridge.pine"
 
 
+# Explicit column list: raw_json is deliberately excluded. It duplicates the
+# parsed fields and, on rows stored before the secret was stripped at insert
+# time, could contain the webhook shared secret.
+SIGNAL_COLUMNS = (
+    "id, received_at, source, symbol, action, strategy, price, timeframe, indicators_json"
+)
+
+
 def _conn():
     return sqlite3.connect(settings.SIGNALS_DB_PATH)
 
@@ -31,12 +39,12 @@ def register(mcp: FastMCP) -> None:
         try:
             if symbol:
                 rows = conn.execute(
-                    "SELECT * FROM signals WHERE symbol = ? ORDER BY id DESC LIMIT ?",
+                    f"SELECT {SIGNAL_COLUMNS} FROM signals WHERE symbol = ? ORDER BY id DESC LIMIT ?",
                     (symbol.upper(), limit),
                 ).fetchall()
             else:
                 rows = conn.execute(
-                    "SELECT * FROM signals ORDER BY id DESC LIMIT ?", (limit,)
+                    f"SELECT {SIGNAL_COLUMNS} FROM signals ORDER BY id DESC LIMIT ?", (limit,)
                 ).fetchall()
             return [dict(r) for r in rows]
         finally:
@@ -52,7 +60,7 @@ def register(mcp: FastMCP) -> None:
             out = {}
             for sym in symbols:
                 row = conn.execute(
-                    "SELECT * FROM signals WHERE symbol = ? ORDER BY id DESC LIMIT 1",
+                    f"SELECT {SIGNAL_COLUMNS} FROM signals WHERE symbol = ? ORDER BY id DESC LIMIT 1",
                     (sym.upper(),),
                 ).fetchone()
                 out[sym.upper()] = dict(row) if row else None

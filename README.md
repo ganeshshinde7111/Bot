@@ -23,7 +23,7 @@ TradingView / MT5  --alert-->  webhook_listener (FastAPI + SQLite)
 Claude  <--MCP tools-->  mcp_server (broker + risk + sentiment + signals)
   |
   v
-DhanHQ (default, free API+data) -- or Zerodha Kite Connect (fallback)
+DhanHQ (default; trading API free, data API separate) -- or Zerodha Kite Connect (fallback)
 ```
 
 Full diagram and rationale: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
@@ -99,8 +99,9 @@ Agent SDK / Claude Code job.
 
 ## Extending
 
-- **Broker choice**: `ACTIVE_BROKER=dhan` (default -- free API and data,
-  no monthly subscription) or `ACTIVE_BROKER=kite` (Zerodha, kept as a
+- **Broker choice**: `ACTIVE_BROKER=dhan` (default -- trading API is free; the
+  market-data APIs (LTP/quotes/candles) need a separate Dhan Data API
+  subscription) or `ACTIVE_BROKER=kite` (Zerodha, kept as a
   fully-implemented fallback). This is a restart-time switch, not an
   automatic runtime fallback -- an order should never silently jump
   brokers mid-trade. Only the active broker's tools are registered under
