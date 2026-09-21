@@ -39,6 +39,7 @@ Full diagram and rationale: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 | `docs/MASTER_SYSTEM_PROMPT.md` | Production system prompt for the Claude decision engine, with risk rules and output schema. |
 | `docs/ARCHITECTURE.md` | Data-flow diagram and design rationale. |
 | `docs/DEPLOYMENT.md` | Docker / docker-compose deployment guide for a Linux ARM VPS. |
+| `docs/AUTONOMOUS_LOOP.md` | How the scheduled headless-Claude decision loop (`agent/run_cycle.py`, `deploy/*.timer`) works, plus the go-live checklist. |
 | `claude_config/mcp_config.json` | Sample MCP config for Claude Desktop (local stdio) and a remote/tunneled setup. |
 | `scripts/kite_login_helper.py` | Interactive helper for Kite's daily access-token refresh (only needed if `ACTIVE_BROKER=kite`). |
 | `docker/` | Dockerfiles, `docker-compose.yml`, Caddy reverse-proxy config. |

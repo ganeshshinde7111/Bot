@@ -1,0 +1,15 @@
+[Unit]
+Description=AI algo-trading bot - one autonomous decision cycle
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/ai-algo-trading-bot
+Environment=PATH=/home/ubuntu/.local/bin:/usr/local/bin:/usr/bin:/bin
+# Optional: Environment=CYCLE_WATCHLIST=INFY,TCS,RELIANCE
+# Optional: Environment=CYCLE_MODEL=sonnet
+ExecStart=/usr/bin/python3 /home/ubuntu/ai-algo-trading-bot/agent/run_cycle.py
+# Hard stop well above the script's own 600s timeout.
+TimeoutStartSec=900
